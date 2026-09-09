@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#191d34">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Fall 2026 &mdash; Assignment Tracker</title>
+<style>
+  :root{
+    --bg:#0f1220;
+    --panel:#171a2e;
+    --panel-2:#1e2240;
+    --line:#2b3057;
+    --text:#e9ebf5;
+    --muted:#9aa1c4;
+    --accent:#6d8cff;
+    --today:#3a2f5c;
+    --c467:#4f8cff;
+    --c432:#22b98a;
+    --c315:#f0a536;
+    --c247:#b47cff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  button{font-family:inherit}
+
+  /* ---------- shell ---------- */
+  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  header.top{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:12px 20px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#191d34,#141729);
+  }
+  .brand{font-size:18px;font-weight:700;letter-spacing:.2px}
+  .brand span{color:var(--muted);font-weight:500;font-size:13px;margin-left:8px}
+  .tabs{display:flex;gap:6px;background:var(--panel-2);padding:4px;border-radius:10px}
+  .tabs button{
+    background:transparent;border:0;color:var(--muted);padding:7px 14px;
+    border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;
+  }
+  .tabs button:hover{color:var(--text)}
+  .tabs button.active{background:var(--accent);color:#0d1020}
+  .spacer{flex:1}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+
+  .body{display:flex;flex:1;min-height:0}
+  main{flex:1;min-width:0;overflow:auto;padding:18px 20px 40px}
+  aside{
+    width:360px;flex:0 0 360px;border-left:1px solid var(--line);
+    background:var(--panel);display:flex;flex-direction:column;min-height:0;
+  }
+
+  /* ---------- toolbar ---------- */
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .btn{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;
+  }
+  .btn:hover{border-color:var(--accent)}
+  .btn.sm{padding:5px 9px;font-size:12px}
+  .period{font-size:19px;font-weight:700;min-width:220px}
+  .seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;border:0;color:var(--muted);padding:7px 12px;cursor:pointer;font-size:13px;font-weight:600}
+  .seg button.active{background:var(--accent);color:#0d1020}
+  .filters{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted);
+    padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:14px}
+  .filters label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+  .filters input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+
+  /* ---------- weight emphasis ---------- */
+  .w-low{font-weight:400}
+  .w-mid{font-weight:700}
+  .w-high{font-weight:900;letter-spacing:.2px}
+  .badge{
+    display:inline-block;font-size:10px;line-height:1;padding:3px 5px;border-radius:5px;
+    background:#2a2f57;color:var(--muted);font-weight:700;vertical-align:middle;
+  }
+  .w-mid .badge{background:#4a3c12;color:#ffd479}
+  .w-high .badge{background:#5a1f22;color:#ff9d9d}
+  .done{text-decoration:line-through;opacity:.45}
+
+  /* ---------- calendar ---------- */
+  .cal{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);background:var(--panel-2)}
+  .dow div{padding:8px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cell{
+    border-top:1px solid var(--line);border-right:1px solid var(--line);
+    min-height:118px;padding:6px;display:flex;flex-direction:column;gap:4px;
+  }
+  .cell:nth-child(7n){border-right:0}
+  .cell.out{background:#13162a;color:#5b6088}
+  .cell.today{background:var(--today)}
+  .cell.brk{background:repeating-linear-gradient(135deg,#151831,#151831 7px,#1b1f3a 7px,#1b1f3a 14px)}
+  .cell.brk.today{background:var(--today)}
+  .brk-tag{font-size:9.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+    color:#7f87b5;border:1px dashed #3a4070;border-radius:5px;padding:2px 4px;text-align:center}
+  .dnum{font-size:12px;font-weight:700;color:var(--muted)}
+  .cell.today .dnum{color:#fff}
+  .items{display:flex;flex-direction:column;gap:3px;overflow-y:auto;max-height:150px}
+  .chip{
+    font-size:11.5px;line-height:1.25;padding:4px 6px;border-radius:6px;
+    background:var(--panel-2);border-left:3px solid var(--accent);cursor:default;
+  }
+  .chip .t{display:block;color:var(--muted);font-size:10px;font-weight:600}
+  .chip.w-high{border-left-width:5px}
+
+  /* week view */
+  .grid.week .cell{min-height:420px}
+  .grid.week .items{max-height:none}
+  .grid.week .chip{font-size:12.5px;padding:6px 8px}
+
+  /* ---------- list view ---------- */
+  .daygroup{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-bottom:12px;overflow:hidden}
+  .daygroup > h3{
+    margin:0;padding:10px 14px;background:var(--panel-2);font-size:14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .daygroup > h3 .rel{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600}
+  .daygroup.is-today > h3{background:#3a2f5c}
+  .row{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--line)}
+  .row input[type=checkbox]{margin-top:3px;width:17px;height:17px;accent-color:var(--accent);cursor:pointer;flex:0 0 auto}
+  .row .main{flex:1;min-width:0}
+  .row .meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .pill{
+    display:inline-block;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:999px;
+    color:#0d1020;margin-right:8px;vertical-align:1px;
+  }
+
+  /* ---------- course view ---------- */
+  .course{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-bottom:14px;overflow:hidden}
+  .course > h3{margin:0;padding:11px 14px;font-size:15px;display:flex;align-items:center;gap:10px;background:var(--panel-2)}
+  .course > h3 .cnt{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600}
+
+  /* ---------- sidebar ---------- */
+  aside h2{margin:0;padding:14px 16px 8px;font-size:14px;letter-spacing:.3px}
+  .prog{padding:0 16px 12px}
+  .bar{height:7px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,#22b98a,#6d8cff);width:0}
+  .prog small{display:block;color:var(--muted);margin-top:6px;font-size:11.5px}
+  .side-tools{padding:0 16px 10px;display:flex;gap:8px}
+  .side-list{overflow-y:auto;flex:1;min-height:0;border-top:1px solid var(--line)}
+  .side-item{display:flex;gap:10px;padding:9px 16px;border-bottom:1px solid #22264a;align-items:flex-start}
+  .side-item:hover{background:var(--panel-2)}
+  .side-item input{margin-top:2px;width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex:0 0 auto}
+  .side-item .ttl{font-size:13px;line-height:1.3}
+  .side-item .dt{font-size:11px;color:var(--muted);margin-top:2px}
+  .side-item.overdue .dt{color:#ff9d9d}
+  .side-sub{padding:8px 16px;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;
+    color:var(--muted);background:#13162a;font-weight:800;position:sticky;top:0}
+
+  .empty{color:var(--muted);padding:24px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+  details.notes{margin-top:22px;color:var(--muted);font-size:12.5px}
+  details.notes summary{cursor:pointer;font-weight:700;color:var(--text)}
+  details.notes li{margin:4px 0}
+
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#333a66;border-radius:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  @media (max-width:1100px) and (min-width:761px){
+    .body{flex-direction:column}
+    aside{width:auto;flex:0 0 auto;border-left:0;border-top:1px solid var(--line);max-height:45vh}
+  }
+
+  /* =========================================================
+     MOBILE-ONLY CHROME
+     Hidden at every desktop width; the desktop render path
+     and layout below are completely untouched.
+     ========================================================= */
+  .m-only,.scrim,.sheet,.mobnav{display:none}
+
+  @media (max-width:760px){
+    body{-webkit-text-size-adjust:100%}
+    .app{height:100dvh}
+
+    /* ---- header: compact, sticky ---- */
+    header.top{
+      padding:8px 12px;gap:10px;position:sticky;top:0;z-index:30;
+      padding-top:calc(8px + env(safe-area-inset-top));
+    }
+    .brand{font-size:15px;flex:1;min-width:0}
+    .brand span{display:block;margin:1px 0 0;font-size:11px}
+    .tabs,.legend,.spacer{display:none}          /* replaced by the bottom nav */
+    .m-progress{
+      display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+      min-width:44px;min-height:44px;padding:0 12px;border-radius:22px;
+      background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+      font-size:12px;font-weight:800;cursor:pointer;
+    }
+
+    /* ---- main ---- */
+    main{padding:12px 12px 28px;-webkit-overflow-scrolling:touch}
+
+    /* ---- toolbar: period on its own line, controls below ---- */
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+    .toolbar .btn{min-width:52px;min-height:38px}
+    .period{order:-1;width:100%;min-width:0;font-size:17px}
+    .seg{margin-left:auto}
+    .seg button{min-height:38px;padding:0 14px}
+
+    /* ---- filters collapse into a disclosure ---- */
+    .filters{gap:10px 14px;padding:10px;font-size:13px}
+    .filters input{width:20px;height:20px}
+    .filters label{min-height:32px}
+    .filters .flabel{width:100%}
+
+    /* ---- calendar: month = tap-a-day dots ---- */
+    .dow div{padding:6px 2px;font-size:9px;text-align:center;letter-spacing:0}
+    .cell{min-height:62px;padding:3px 2px;gap:2px;align-items:center}
+    .dnum{font-size:12px;text-align:center;width:100%}
+    .brk-tag{font-size:7px;padding:1px 2px;letter-spacing:0;line-height:1.1}
+    .cell.tappable{cursor:pointer}
+    .cell.tappable:active{background:#242a4d}
+    .dots{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-content:flex-start}
+    .dot{width:7px;height:7px;border-radius:50%;display:block}
+    .dot.d-big{width:9px;height:9px;box-shadow:0 0 0 1.5px #fff6}
+    .dot.d-done{opacity:.28}
+    .dots .more{font-size:8.5px;color:var(--muted);font-weight:800;line-height:7px}
+
+    /* ---- calendar: week = full-width agenda ---- */
+    .cal.cal-week .dow{display:none}
+    .grid.week{grid-template-columns:1fr}
+    .grid.week .cell{min-height:0;border-right:0;align-items:stretch;padding:8px 10px}
+    .grid.week .dnum{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+    .grid.week .chip{font-size:13px;padding:8px 10px}
+
+    /* ---- bigger touch targets in list/course views ---- */
+    .row{padding:12px 12px;gap:12px}
+    .row input[type=checkbox]{width:24px;height:24px;margin-top:1px}
+    .daygroup > h3{padding:11px 12px;font-size:13.5px;flex-wrap:wrap}
+    .daygroup > h3 .rel{margin-left:0;width:100%}
+    .course > h3{padding:11px 12px;flex-wrap:wrap}
+    .course > h3 .cnt{margin-left:0;width:100%;margin-top:3px}
+
+    /* ---- sidebar becomes a right-side drawer ---- */
+    aside{
+      position:fixed;top:0;right:0;bottom:0;width:min(88vw,380px);flex:none;max-height:none;
+      z-index:60;border-left:1px solid var(--line);box-shadow:-18px 0 40px #0009;
+      transform:translateX(102%);transition:transform .22s ease;
+      padding-top:env(safe-area-inset-top);
+    }
+    body.drawer aside{transform:translateX(0)}
+    aside h2{display:flex;align-items:center;gap:10px;padding:14px 14px 8px}
+    .drawer-x{
+      display:block;margin-left:auto;background:var(--panel-2);border:1px solid var(--line);
+      color:var(--text);font-size:20px;line-height:1;width:38px;height:38px;border-radius:10px;cursor:pointer;
+    }
+    .side-list{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+    .side-item{padding:12px 14px;gap:12px}
+    .side-item input{width:24px;height:24px;margin-top:0}
+    .side-item .ttl{font-size:13.5px}
+    .side-tools .btn{flex:1;min-height:40px}
+
+    /* ---- scrim behind drawer / sheet ---- */
+    .scrim{
+      display:block;position:fixed;inset:0;background:#000a;z-index:50;
+      opacity:0;pointer-events:none;transition:opacity .22s ease;
+    }
+    body.drawer .scrim,body.sheet-open .scrim{opacity:1;pointer-events:auto}
+
+    /* ---- day-detail bottom sheet ---- */
+    .sheet{
+      display:flex;flex-direction:column;position:fixed;left:0;right:0;bottom:0;z-index:70;
+      max-height:76vh;background:var(--panel);border-top:1px solid var(--line);
+      border-radius:18px 18px 0 0;box-shadow:0 -18px 40px #0009;
+      transform:translateY(103%);transition:transform .24s ease;
+    }
+    body.sheet-open .sheet{transform:translateY(0)}
+    .sheet-grab{width:42px;height:4px;border-radius:99px;background:#3b4270;margin:8px auto 2px}
+    .sheet-head{display:flex;align-items:center;gap:12px;padding:8px 14px 10px;border-bottom:1px solid var(--line)}
+    .sheet-head b{font-size:14.5px}
+    .sheet-head .btn{margin-left:auto;min-height:38px}
+    .sheet-body{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+      padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+    .sheet-body .row:first-child{border-top:0}
+
+    /* ---- bottom tab bar ---- */
+    .mobnav{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:2px;z-index:40;
+      background:#141729;border-top:1px solid var(--line);
+      padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+    }
+    .mobnav button{
+      background:transparent;border:0;color:var(--muted);cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;gap:3px;
+      padding:6px 2px;border-radius:10px;font-size:10.5px;font-weight:700;min-height:52px;
+    }
+    .mobnav button span{font-size:18px;line-height:1}
+    .mobnav button em{font-style:normal}
+    .mobnav button.active{color:var(--accent);background:var(--panel-2)}
+
+    body.drawer,body.sheet-open{overflow:hidden}
+    details.notes{margin-top:18px;font-size:12px}
+  }
+
+  @media (max-width:400px){
+    .cell{min-height:54px}
+    .dot{width:6px;height:6px}
+    .brand{font-size:14px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">Fall 2026 Assignment Tracker<span id="courseCount"></span></div>
+    <nav class="tabs" id="tabs">
+      <button data-view="calendar" class="active">Calendar</button>
+      <button data-view="list">List</button>
+      <button data-view="course">Courses</button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="legend" id="legend"></div>
+    <button class="m-only m-progress" id="mProgress" aria-label="Open assignment list"></button>
+  </header>
+
+  <div class="body">
+    <main>
+      <div id="viewRoot"></div>
+      <details class="notes">
+        <summary>How this was built / assumptions</summary>
+        <ul>
+          <li><b>Year:</b> 2026 &mdash; every dated item matches the weekday implied by its class (Tue quizzes, Wed homework, Mon/Wed 9:30&nbsp;AM DRAMA classes).</li>
+          <li><b>Date ranges</b> (Evaluative Quiz 2 &amp; 3, both Final Exams) are placed on the <b>earliest</b> date; the full range is shown in the details.</li>
+          <li><b>Weekly items</b> run from the first full week of class to the last week before finals: ACCT&nbsp;467 quizzes Sep&nbsp;15&ndash;Dec&nbsp;8, ACCT&nbsp;432 homework Sep&nbsp;16&ndash;Dec&nbsp;2, DRAMA&nbsp;247 readings Sep&nbsp;14&ndash;Dec&nbsp;2.</li>
+          <li><b>DRAMA 247 readings</b> are skipped on any date that already has another DRAMA&nbsp;247 assignment, per the "EXCEPT on days with other assignments" note.</li>
+          <li><b>Weighting:</b> items with no stated percentage are treated as &lt;5%. 6&ndash;19% is <span class="w-mid">bold</span>, 20%+ is <span class="w-high">extra bold</span>.</li>
+          <li><b>Reading Week (Nov 9&ndash;13)</b> is excluded &mdash; no weekly quizzes, homework or readings are generated in that week.</li>
+          <li>Other statutory holidays are <b>not</b> excluded from the weekly items, since the source file doesn't list them. Uncheck anything that doesn't apply.</li>
+        </ul>
+      </details>
+    </main>
+
+    <aside id="aside">
+      <h2>All Assignments<button class="m-only drawer-x" id="drawerClose" aria-label="Close">&times;</button></h2>
+      <div class="prog">
+        <div class="bar"><i id="progBar"></i></div>
+        <small id="progText"></small>
+      </div>
+      <div class="side-tools">
+        <button class="btn sm" id="jumpToday">Jump to today</button>
+        <button class="btn sm" id="resetAll">Clear all checks</button>
+      </div>
+      <div class="side-list" id="sideList"></div>
+    </aside>
+  </div>
+
+  <!-- mobile-only chrome: hidden by CSS above 760px, never activated by desktop JS -->
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="daySheet" role="dialog" aria-label="Assignments for day">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head"><b id="sheetTitle"></b><button class="btn sm" id="sheetClose">Close</button></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+  <nav class="mobnav" id="mobnav">
+    <button data-view="calendar" class="active"><span>&#128197;</span>Calendar</button>
+    <button data-view="list"><span>&#9776;</span>List</button>
+    <button data-view="course"><span>&#127891;</span>Courses</button>
+    <button data-drawer="1"><span>&#128203;</span><em id="navAllLabel">All</em></button>
+  </nav>
+</div>
+
+<script>
+/* =========================================================
+   1. COURSES
+   ========================================================= */
+const COURSES = {
+  'ACCT 467': { color:'var(--c467)', raw:'#4f8cff' },
+  'ACCT 432': { color:'var(--c432)', raw:'#22b98a' },
+  'ACCT 315': { color:'var(--c315)', raw:'#f0a536' },
+  'DRAMA 247':{ color:'var(--c247)', raw:'#b47cff' }
+};
+
+/* =========================================================
+   2. DATE HELPERS  (all local-time, no timezone drift)
+   ========================================================= */
+const d  = (y,m,day) => new Date(y, m-1, day);
+const key = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+const addDays = (dt,n) => { const x = new Date(dt); x.setDate(x.getDate()+n); return x; };
+const startOfWeek = dt => addDays(dt, -dt.getDay());               // Sunday-start
+const sameDay = (a,b) => key(a) === key(b);
+const DOW  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtLong  = dt => `${DOW[dt.getDay()]}, ${MON[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;
+const fmtShort = dt => `${DOW[dt.getDay()]} ${MONS[dt.getMonth()]} ${dt.getDate()}`;
+
+const TODAY = (()=>{ const n = new Date(); return d(n.getFullYear(), n.getMonth()+1, n.getDate()); })();
+
+/* no-class periods - weekly recurring items are never generated inside these */
+const BREAKS = [
+  { name:'Reading Week', from:d(2026,11,9), to:d(2026,11,13) }
+];
+const inBreak = dt => BREAKS.some(b => dt >= b.from && dt <= b.to);
+
+/* weekly expansion: every matching weekday between from..to, skipping breaks */
+function weekly(weekdays, from, to, skip = []) {
+  const skipSet = new Set(skip.map(dt => key(dt)));
+  const out = [];
+  for (let cur = new Date(from); cur <= to; cur = addDays(cur,1)) {
+    if (weekdays.includes(cur.getDay()) && !skipSet.has(key(cur)) && !inBreak(cur)) out.push(new Date(cur));
+  }
+  return out;
+}
+
+/* =========================================================
+   3. ASSIGNMENT DATA  (transcribed from
+      "Homework_Projects_Exams_Due Dates.txt")
+   ========================================================= */
+const A = [];
+const add = o => { A.push(o); return o; };
+
+/* ---- ACCT 467 ---- */
+add({ id:'acct467-mt1', course:'ACCT 467', title:'Midterm 1',  type:'Exam', date:d(2026,10,8),  time:'6:00 PM', weight:20 });
+add({ id:'acct467-mt2', course:'ACCT 467', title:'Midterm 2',  type:'Exam', date:d(2026,11,5),  time:'6:00 PM', weight:20 });
+add({ id:'acct467-final', course:'ACCT 467', title:'Final Exam', type:'Exam',
+      date:d(2026,12,9), end:d(2026,12,22), weight:50,
+      note:'Scheduled somewhere between Dec 9 and Dec 22' });
+
+/* ---- ACCT 432 ---- */
+add({ id:'acct432-mt',    course:'ACCT 432', title:'Midterm',                type:'Exam',         date:d(2026,10,7),  time:'11:00 AM', weight:40 });
+add({ id:'acct432-group', course:'ACCT 432', title:'Group Presentation',     type:'Presentation', date:d(2026,10,26), time:'11:00 AM', weight:20 });
+add({ id:'acct432-indiv', course:'ACCT 432', title:'Individual Presentation',type:'Presentation', date:d(2026,11,25), time:'11:00 AM', weight:20 });
+
+/* ---- ACCT 315 ---- */
+add({ id:'acct315-pq',  course:'ACCT 315', title:'Practice Quiz', type:'Quiz', date:d(2026,9,21), time:'5:00 PM' });
+add({ id:'acct315-eq1', course:'ACCT 315', title:'Evaluative Quiz 1', type:'Quiz',
+      date:d(2026,9,25), time:'9:00 AM \u2013 5:00 PM', location:'the LAC' });
+add({ id:'acct315-mt1', course:'ACCT 315', title:'Midterm 1', type:'Exam', date:d(2026,9,28), time:'2:00 PM', weight:25 });
+add({ id:'acct315-eq2', course:'ACCT 315', title:'Evaluative Quiz 2', type:'Quiz',
+      date:d(2026,10,26), end:d(2026,10,27), time:'9:00 AM \u2013 5:00 PM', location:'the LAC',
+      note:'Open Oct 26 & 27, 9:00 AM \u2013 5:00 PM' });
+add({ id:'acct315-mt2', course:'ACCT 315', title:'Midterm 2', type:'Exam', date:d(2026,10,28), time:'2:00 PM', weight:25 });
+add({ id:'acct315-eq3', course:'ACCT 315', title:'Evaluative Quiz 3', type:'Quiz',
+      date:d(2026,12,2), end:d(2026,12,4), location:'the LAC',
+      note:'Open 9:00 AM Dec 2 until 5:00 PM Dec 4' });
+add({ id:'acct315-final', course:'ACCT 315', title:'Final Exam', type:'Exam',
+      date:d(2026,12,9), end:d(2026,12,22), weight:40,
+      note:'Scheduled somewhere between Dec 9 and Dec 22' });
+
+/* ---- DRAMA 247 ---- */
+const dramaFixed = [
+  add({ id:'drama247-pep',       course:'DRAMA 247', title:'Personal Elevator Pitch',            type:'Assignment', date:d(2026,9,16),  time:'9:30 AM', weight:10 }),
+  add({ id:'drama247-prof',      course:'DRAMA 247', title:'Professional Elevator Pitch',        type:'Assignment', date:d(2026,9,21),  time:'9:30 AM', weight:10 }),
+  add({ id:'drama247-intro',     course:'DRAMA 247', title:'Introduction Speech',                type:'Speech',     date:d(2026,10,7),  time:'9:30 AM', weight:15 }),
+  add({ id:'drama247-topics',    course:'DRAMA 247', title:'Three Possible Persuasive Speech Topics', type:'Assignment', date:d(2026,10,19), time:'9:30 AM' }),
+  add({ id:'drama247-interview', course:'DRAMA 247', title:'Interview Role Play',                type:'Assignment', date:d(2026,10,26), time:'9:30 AM', weight:15 }),
+  add({ id:'drama247-draft',     course:'DRAMA 247', title:'First Draft of Persuasive Speech',   type:'Assignment', date:d(2026,11,16), time:'9:30 AM', weight:35 }),
+  add({ id:'drama247-speech',     course:'DRAMA 247', title:'Persuasive Speech',                 type:'Speech',     date:d(2026,11,25), time:'9:30 AM', weight:35 })
+];
+
+/* ---- weekly recurring items ---- */
+// ACCT 467 - quizzes due every Tuesday @ 11:59 PM
+weekly([2], d(2026,9,15), d(2026,12,8)).forEach((dt,i) =>
+  add({ id:`acct467-quiz-${key(dt)}`, course:'ACCT 467', title:`Weekly Quiz ${i+1}`, type:'Quiz',
+        date:dt, time:'11:59 PM', weekly:true }));
+
+// ACCT 432 - homework due every Wednesday @ 11:59 PM
+weekly([3], d(2026,9,16), d(2026,12,2)).forEach((dt,i) =>
+  add({ id:`acct432-hw-${key(dt)}`, course:'ACCT 432', title:`Weekly Homework ${i+1}`, type:'Homework',
+        date:dt, time:'11:59 PM', weekly:true }));
+
+// DRAMA 247 - readings every Monday & Wednesday @ 9:30 AM, except days with another DRAMA assignment
+weekly([1,3], d(2026,9,14), d(2026,12,2), dramaFixed.map(x=>x.date)).forEach((dt,i) =>
+  add({ id:`drama247-reading-${key(dt)}`, course:'DRAMA 247', title:`Reading ${i+1}`, type:'Reading',
+        date:dt, time:'9:30 AM', weekly:true }));
+
+A.sort((a,b)=> a.date - b.date || a.course.localeCompare(b.course) || a.title.localeCompare(b.title));
+
+/* =========================================================
+   4. STATE  (checked items persist in localStorage)
+   ========================================================= */
+const LS = 'fall2026.assignments.done.v1';
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem(LS) || '[]')); } catch(e){}
+const saveDone = () => { try { localStorage.setItem(LS, JSON.stringify([...done])); } catch(e){} };
+const isDone = id => done.has(id);
+
+const state = {
+  view: 'calendar',
+  mode: 'month',                                  // month | week
+  cursor: TODAY,
+  courses: new Set(Object.keys(COURSES)),
+  hideDone: false
+};
+
+/* mobile detection - the ONLY thing that unlocks the mobile render branches */
+const MQ = window.matchMedia('(max-width: 760px)');
+let isMobile = MQ.matches;
+let sheetDay = null;                              // yyyy-mm-dd currently in the day sheet
+
+/* =========================================================
+   5. SHARED RENDER HELPERS
+   ========================================================= */
+const wClass = a => a.weight >= 20 ? 'w-high' : a.weight >= 6 ? 'w-mid' : 'w-low';
+const wLabel = a => a.weight ? a.weight + '%' : '&lt;5%';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function dateText(a){
+  let s = fmtLong(a.date);
+  if (a.end) s += ` \u2013 ${MONS[a.end.getMonth()]} ${a.end.getDate()}`;
+  if (a.time) s += ` \u00b7 ${a.time}`;
+  return s;
+}
+function tooltip(a){
+  const bits = [`${a.course} \u2014 ${a.title}`, a.type, dateText(a)];
+  if (a.location) bits.push('Location: ' + a.location);
+  bits.push('Worth: ' + wLabel(a).replace('&lt;','<'));
+  if (a.note) bits.push(a.note);
+  return esc(bits.join('\n'));
+}
+const visible = () => A.filter(a => state.courses.has(a.course) && !(state.hideDone && isDone(a.id)));
+
+/* one checkbox row (list + course views) */
+function rowHTML(a, showCourse = true){
+  const dn = isDone(a.id) ? ' done' : '';
+  const pill = showCourse
+    ? `<span class="pill" style="background:${COURSES[a.course].raw}">${a.course}</span>` : '';
+  return `<div class="row">
+    <input type="checkbox" data-id="${a.id}" ${isDone(a.id)?'checked':''} aria-label="Mark complete">
+    <div class="main">
+      <div class="${wClass(a)}${dn}">${pill}${esc(a.title)} <span class="badge">${wLabel(a)}</span></div>
+      <div class="meta${dn}">${esc(a.type)} \u00b7 ${dateText(a)}${a.location ? ' \u00b7 in ' + esc(a.location) : ''}${a.note ? ' \u00b7 ' + esc(a.note) : ''}</div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   6. CALENDAR VIEW
+   ========================================================= */
+function renderCalendar(){
+  const items = visible();
+  const byDay = {};
+  items.forEach(a => (byDay[key(a.date)] ||= []).push(a));
+
+  let days, label, inRange;
+  if (state.mode === 'month'){
+    const y = state.cursor.getFullYear(), m = state.cursor.getMonth();
+    const first = d(y, m+1, 1);
+    const gridStart = startOfWeek(first);
+    const last = new Date(y, m+1, 0);
+    const gridEnd = addDays(startOfWeek(last), 6);
+    days = [];
+    for (let c = gridStart; c <= gridEnd; c = addDays(c,1)) days.push(new Date(c));
+    label = `${MON[m]} ${y}`;
+    inRange = dt => dt.getMonth() === m;
+  } else {
+    const s = startOfWeek(state.cursor);
+    days = Array.from({length:7}, (_,i) => addDays(s,i));
+    const e = days[6];
+    label = `${MONS[s.getMonth()]} ${s.getDate()} \u2013 ${MONS[e.getMonth()]} ${e.getDate()}, ${e.getFullYear()}`;
+    inRange = () => true;
+  }
+
+  /* on phones the month grid is too narrow for text chips -> colour dots + tap for details */
+  const dotMode = isMobile && state.mode === 'month';
+
+  const cells = days.map(dt => {
+    const list = (byDay[key(dt)] || []);
+    let inner;
+    if (dotMode){
+      const shown = list.slice(0,4);
+      inner = list.length ? `<div class="dots">${
+        shown.map(a => `<span class="dot${isDone(a.id)?' d-done':''}${a.weight>=20?' d-big':''}" style="background:${COURSES[a.course].raw}"></span>`).join('')
+      }${list.length>4 ? `<span class="more">+${list.length-4}</span>` : ''}</div>` : '';
+    } else {
+      inner = `<div class="items">${list.map(a => {
+        const dn = isDone(a.id) ? ' done' : '';
+        return `<div class="chip ${wClass(a)}" style="border-left-color:${COURSES[a.course].raw}" title="${tooltip(a)}">
+          <span class="t${dn}">${esc(a.course)}${a.time ? ' \u00b7 ' + esc(a.time) : ''}</span>
+          <span class="${dn}">${esc(a.title)} <span class="badge">${wLabel(a)}</span></span>
+        </div>`;
+      }).join('')}</div>`;
+    }
+    const brk = BREAKS.find(b => dt >= b.from && dt <= b.to);
+    return `<div class="cell${inRange(dt)?'':' out'}${sameDay(dt,TODAY)?' today':''}${brk?' brk':''}${list.length?' tappable':''}" data-date="${key(dt)}">
+      <div class="dnum">${state.mode==='week' ? DOW[dt.getDay()] + ' ' : ''}${dt.getDate()}</div>
+      ${brk && inRange(dt) ? `<div class="brk-tag">${brk.name}</div>` : ''}
+      ${inner}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="toolbar">
+      <button class="btn" id="prev" aria-label="Previous">&larr;</button>
+      <button class="btn" id="today">Today</button>
+      <button class="btn" id="next" aria-label="Next">&rarr;</button>
+      <div class="period">${label}</div>
+      <div class="seg">
+        <button data-mode="month" class="${state.mode==='month'?'active':''}">Month</button>
+        <button data-mode="week"  class="${state.mode==='week' ?'active':''}">${isMobile?'Agenda':'Week'}</button>
+      </div>
+    </div>
+    ${filtersHTML()}
+    <div class="cal cal-${state.mode}">
+      <div class="dow">${DOW.map(x=>`<div>${isMobile?x[0]:x}</div>`).join('')}</div>
+      <div class="grid ${state.mode==='week'?'week':''}">${cells}</div>
+    </div>`;
+}
+
+/* =========================================================
+   7. LIST VIEW
+   ========================================================= */
+function renderList(){
+  const items = visible();
+  if (!items.length) return filtersHTML() + `<div class="empty">Nothing to show with the current filters.</div>`;
+
+  const groups = new Map();
+  items.forEach(a => {
+    const k = key(a.date);
+    if (!groups.has(k)) groups.set(k, { date:a.date, list:[] });
+    groups.get(k).list.push(a);
+  });
+
+  const html = [...groups.values()].map(g => {
+    const diff = Math.round((g.date - TODAY) / 86400000);
+    const rel = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow'
+              : diff < 0 ? `${-diff} day${-diff>1?'s':''} ago` : `in ${diff} days`;
+    const allDone = g.list.every(a => isDone(a.id));
+    return `<section class="daygroup${sameDay(g.date,TODAY)?' is-today':''}" id="day-${key(g.date)}">
+      <h3 class="${allDone?'done':''}">${fmtLong(g.date)} <span class="rel">${rel} \u00b7 ${g.list.length} item${g.list.length>1?'s':''}</span></h3>
+      ${g.list.map(a => rowHTML(a, true)).join('')}
+    </section>`;
+  }).join('');
+
+  return filtersHTML() + html;
+}
+
+/* =========================================================
+   8. COURSE VIEW
+   ========================================================= */
+function renderCourse(){
+  const items = visible();
+  const html = Object.keys(COURSES).filter(c => state.courses.has(c)).map(c => {
+    const list = items.filter(a => a.course === c);           // already date-sorted
+    if (!list.length) return '';
+    const doneN = list.filter(a=>isDone(a.id)).length;
+    return `<section class="course">
+      <h3><span class="pill" style="background:${COURSES[c].raw}">${c}</span>
+        <span class="cnt">${doneN}/${list.length} complete \u00b7 next: ${list.find(a=>!isDone(a.id)) ? fmtShort(list.find(a=>!isDone(a.id)).date) : '\u2014'}</span>
+      </h3>
+      ${list.map(a => rowHTML(a, false)).join('')}
+    </section>`;
+  }).join('');
+  return filtersHTML() + (html || `<div class="empty">Nothing to show with the current filters.</div>`);
+}
+
+/* =========================================================
+   9. FILTERS + SIDEBAR
+   ========================================================= */
+function filtersHTML(){
+  return `<div class="filters">
+    <span class="flabel" style="font-weight:700;color:var(--text)">Show:</span>
+    ${Object.keys(COURSES).map(c => `<label>
+      <input type="checkbox" data-course="${c}" ${state.courses.has(c)?'checked':''}>
+      <i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${COURSES[c].raw}"></i> ${c}
+    </label>`).join('')}
+    <label style="margin-left:auto"><input type="checkbox" id="hideDone" ${state.hideDone?'checked':''}> Hide completed</label>
+  </div>`;
+}
+
+function renderSidebar(){
+  const total = A.length, doneN = A.filter(a=>isDone(a.id)).length;
+  document.getElementById('progBar').style.width = (total ? doneN/total*100 : 0) + '%';
+  document.getElementById('progText').textContent = `${doneN} of ${total} complete \u00b7 ${total-doneN} remaining`;
+
+  let lastMonth = null, out = '';
+  A.forEach(a => {
+    const mk = a.date.getFullYear() + '-' + a.date.getMonth();
+    if (mk !== lastMonth){
+      lastMonth = mk;
+      out += `<div class="side-sub">${MON[a.date.getMonth()]} ${a.date.getFullYear()}</div>`;
+    }
+    const dn = isDone(a.id) ? ' done' : '';
+    const overdue = !isDone(a.id) && a.date < TODAY;
+    out += `<div class="side-item${overdue?' overdue':''}" id="side-${a.id}" title="${tooltip(a)}">
+      <input type="checkbox" data-id="${a.id}" ${isDone(a.id)?'checked':''} aria-label="Mark complete">
+      <div>
+        <div class="ttl ${wClass(a)}${dn}">
+          <span class="pill" style="background:${COURSES[a.course].raw}">${a.course}</span>${esc(a.title)}
+          <span class="badge">${wLabel(a)}</span>
+        </div>
+        <div class="dt${dn}">${fmtShort(a.date)}${a.end?` \u2013 ${MONS[a.end.getMonth()]} ${a.end.getDate()}`:''}${a.time?' \u00b7 '+esc(a.time):''}${overdue?' \u00b7 overdue':''}</div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('sideList').innerHTML = out;
+}
+
+/* =========================================================
+   10. WIRING
+   ========================================================= */
+const root = document.getElementById('viewRoot');
+
+function render(){
+  root.innerHTML = state.view === 'calendar' ? renderCalendar()
+                 : state.view === 'list'     ? renderList()
+                 : renderCourse();
+  renderSidebar();
+  renderSheet();
+  syncNav();
+}
+
+function toggle(id){
+  isDone(id) ? done.delete(id) : done.add(id);
+  saveDone();
+  render();
+}
+
+function setView(v){
+  state.view = v;
+  [...document.getElementById('tabs').children].forEach(x => x.classList.toggle('active', x.dataset.view === v));
+  render();
+}
+
+/* tabs */
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-view]'); if (!b) return;
+  setView(b.dataset.view);
+});
+
+/* delegated clicks inside the main view */
+root.addEventListener('click', e => {
+  const t = e.target;
+  if (t.id === 'prev' || t.id === 'next'){
+    const step = t.id === 'next' ? 1 : -1;
+    state.cursor = state.mode === 'month'
+      ? d(state.cursor.getFullYear(), state.cursor.getMonth()+1+step, 1)
+      : addDays(state.cursor, 7*step);
+    return render();
+  }
+  if (t.id === 'today'){ state.cursor = TODAY; return render(); }
+  if (t.dataset.mode){ state.mode = t.dataset.mode; return render(); }
+  if (t.dataset.course){
+    t.checked ? state.courses.add(t.dataset.course) : state.courses.delete(t.dataset.course);
+    return render();
+  }
+  if (t.id === 'hideDone'){ state.hideDone = t.checked; return render(); }
+  if (t.matches('input[type=checkbox][data-id]')) return toggle(t.dataset.id);
+
+  /* phone only: tap a month-grid day to open its detail sheet */
+  if (isMobile && state.view === 'calendar' && state.mode === 'month'){
+    const cell = t.closest('.cell.tappable');
+    if (cell) openSheet(cell.dataset.date);
+  }
+});
+
+/* sidebar checkboxes */
+document.getElementById('sideList').addEventListener('click', e => {
+  if (e.target.matches('input[type=checkbox][data-id]')) toggle(e.target.dataset.id);
+});
+
+/* sidebar tools */
+document.getElementById('jumpToday').addEventListener('click', () => {
+  state.cursor = TODAY;
+  render();
+  const next = A.find(a => a.date >= TODAY);
+  if (!next) return;
+  if (state.view === 'list'){
+    document.getElementById('day-' + key(next.date))?.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+  document.getElementById('side-' + next.id)?.scrollIntoView({block:'center'});
+});
+document.getElementById('resetAll').addEventListener('click', () => {
+  if (confirm('Uncheck every assignment?')){ done.clear(); saveDone(); render(); }
+});
+
+/* =========================================================
+   11. MOBILE-ONLY BEHAVIOUR
+   Every handler below is inert on desktop: the controls that
+   trigger them are display:none, and openSheet() bails out
+   unless the mobile media query matches.
+   ========================================================= */
+const body = document.body;
+const sheetEl = document.getElementById('daySheet');
+
+/* --- right-hand drawer (the master assignment list) --- */
+const openDrawer  = () => { body.classList.add('drawer'); syncNav(); };
+const closeDrawer = () => { body.classList.remove('drawer'); syncNav(); };
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('mProgress').addEventListener('click',
+  () => body.classList.contains('drawer') ? closeDrawer() : openDrawer());
+
+/* --- day-detail bottom sheet --- */
+function openSheet(dk){
+  if (!isMobile) return;
+  sheetDay = dk;
+  renderSheet();
+  body.classList.add('sheet-open');
+}
+function closeSheet(){ body.classList.remove('sheet-open'); sheetDay = null; }
+function renderSheet(){
+  if (!sheetDay) return;
+  const list = visible().filter(a => key(a.date) === sheetDay);
+  if (!list.length) return closeSheet();
+  const [y,m,dd] = sheetDay.split('-').map(Number);
+  document.getElementById('sheetTitle').textContent = fmtLong(d(y,m,dd));
+  document.getElementById('sheetBody').innerHTML = list.map(a => rowHTML(a, true)).join('');
+}
+document.getElementById('sheetClose').addEventListener('click', closeSheet);
+sheetEl.addEventListener('click', e => {
+  if (e.target.matches('input[type=checkbox][data-id]')) toggle(e.target.dataset.id);
+});
+document.getElementById('scrim').addEventListener('click', () => { closeDrawer(); closeSheet(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){ closeDrawer(); closeSheet(); }
+});
+
+/* --- bottom tab bar --- */
+const mobnav = document.getElementById('mobnav');
+mobnav.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.drawer){ return body.classList.contains('drawer') ? closeDrawer() : openDrawer(); }
+  closeDrawer(); closeSheet();
+  setView(b.dataset.view);
+  document.querySelector('main').scrollTop = 0;
+});
+
+/* --- keep the tab bar + header pill in sync with state --- */
+function syncNav(){
+  const doneN = A.filter(a => isDone(a.id)).length;
+  const remaining = A.length - doneN;
+  [...mobnav.children].forEach(b => b.classList.toggle('active',
+    b.dataset.drawer ? body.classList.contains('drawer') : (b.dataset.view === state.view && !body.classList.contains('drawer'))));
+  const lbl = document.getElementById('navAllLabel');
+  if (lbl) lbl.textContent = remaining ? `All (${remaining})` : 'All \u2713';
+  document.getElementById('mProgress').textContent = `${doneN}/${A.length}`;
+}
+
+/* --- swipe left/right to change month / week (phones only) --- */
+let tx = 0, ty = 0, tt = 0;
+root.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  tx = e.touches[0].clientX; ty = e.touches[0].clientY; tt = Date.now();
+}, {passive:true});
+root.addEventListener('touchend', e => {
+  if (!isMobile || state.view !== 'calendar' || !e.changedTouches.length) return;
+  const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+  if (Date.now() - tt > 600 || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2) return;
+  const step = dx < 0 ? 1 : -1;
+  state.cursor = state.mode === 'month'
+    ? d(state.cursor.getFullYear(), state.cursor.getMonth()+1+step, 1)
+    : addDays(state.cursor, 7*step);
+  render();
+}, {passive:true});
+
+/* --- react to rotation / resize across the breakpoint --- */
+const onMQ = e => {
+  isMobile = e.matches;
+  if (!isMobile){ closeDrawer(); closeSheet(); }   /* never leave mobile chrome open on desktop */
+  render();
+};
+MQ.addEventListener ? MQ.addEventListener('change', onMQ) : MQ.addListener(onMQ);
+
+/* legend + header count */
+document.getElementById('legend').innerHTML = Object.keys(COURSES)
+  .map(c => `<span><i style="background:${COURSES[c].raw}"></i>${c}</span>`).join('');
+document.getElementById('courseCount').textContent =
+  `${A.length} assignments \u00b7 ${Object.keys(COURSES).length} courses`;
+
+render();
+/* start the calendar on the first month that has work if the term hasn't begun */
+if (A.length && TODAY < A[0].date){ state.cursor = A[0].date; render(); }
+</script>
+</body>
+</html>
