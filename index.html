@@ -159,6 +159,31 @@
     color:var(--muted);background:#13162a;font-weight:800;position:sticky;top:0}
 
   .empty{color:var(--muted);padding:24px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+
+  /* ---------- sync panel ---------- */
+  details.sync{border-top:1px solid var(--line);font-size:12px}
+  details.sync summary{
+    cursor:pointer;padding:9px 16px;font-weight:700;color:var(--muted);
+    font-size:11px;letter-spacing:.5px;text-transform:uppercase;
+  }
+  details.sync summary:hover{color:var(--text)}
+  details.sync[open] summary{color:var(--text)}
+  .sync-body{padding:0 16px 12px;display:flex;flex-direction:column;gap:8px}
+  .sync-body p{margin:0;color:var(--muted);font-size:11.5px;line-height:1.4}
+  .sync-row{display:flex;gap:8px}
+  .sync-row .btn{flex:1}
+  .sync-body code{
+    display:block;background:#0e1124;border:1px solid var(--line);border-radius:7px;
+    padding:6px 8px;font-size:11px;color:#8fe3c0;word-break:break-all;user-select:all;
+  }
+  .sync-body input{
+    flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);border-radius:8px;padding:7px 9px;font:inherit;font-size:12px;
+  }
+  .sync-body input:focus{outline:none;border-color:var(--accent)}
+  .sync-body small{color:var(--muted);font-size:11px;min-height:14px}
+  .sync-body small.ok{color:#7fe0b0}
+  .sync-body small.bad{color:#ff9d9d}
   details.notes{margin-top:22px;color:var(--muted);font-size:12.5px}
   details.notes summary{cursor:pointer;font-weight:700;color:var(--text)}
   details.notes li{margin:4px 0}
@@ -261,6 +286,11 @@
     .side-item input{width:24px;height:24px;margin-top:0}
     .side-item .ttl{font-size:13.5px}
     .side-tools .btn{flex:1;min-height:40px}
+    details.sync summary{padding:12px 14px;min-height:20px}
+    .sync-body{padding:0 14px 14px}
+    .sync-body .btn{min-height:40px}
+    .sync-body input{min-height:40px;font-size:16px}   /* 16px prevents iOS zoom-on-focus */
+    .sync-row{flex-wrap:wrap}
 
     /* ---- scrim behind drawer / sheet ---- */
     .scrim{
@@ -352,6 +382,22 @@
         <button class="btn sm" id="jumpToday">Jump to today</button>
         <button class="btn sm" id="resetAll">Clear all checks</button>
       </div>
+      <details class="sync">
+        <summary>Sync this device</summary>
+        <div class="sync-body">
+          <p>Checkmarks are saved in <i>this</i> browser only. To copy them to another device, send yourself a sync link.</p>
+          <div class="sync-row">
+            <button class="btn sm" id="copyLink">Copy sync link</button>
+            <button class="btn sm" id="copyCode">Copy code</button>
+          </div>
+          <code id="syncCode"></code>
+          <div class="sync-row">
+            <input type="text" id="applyInput" placeholder="Paste a link or code" autocomplete="off" spellcheck="false">
+            <button class="btn sm" id="applyBtn">Apply</button>
+          </div>
+          <small id="syncMsg"></small>
+        </div>
+      </details>
       <div class="side-list" id="sideList"></div>
     </aside>
   </div>
@@ -710,6 +756,7 @@ function render(){
   renderSidebar();
   renderSheet();
   syncNav();
+  document.getElementById('syncCode').textContent = exportCode();
 }
 
 function toggle(id){
@@ -863,6 +910,81 @@ const onMQ = e => {
 };
 MQ.addEventListener ? MQ.addEventListener('change', onMQ) : MQ.addListener(onMQ);
 
+/* =========================================================
+   12. CROSS-DEVICE SYNC
+   The 58 checkboxes are packed into a bitmask -> base64url,
+   giving a ~15-character code that can travel in a URL.
+   No account, no server, works offline.
+   ========================================================= */
+const b64u = bytes => btoa(String.fromCharCode.apply(null, bytes))
+  .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+function unb64u(s){
+  s = s.replace(/-/g,'+').replace(/_/g,'/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s), out = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function exportCode(){
+  const bytes = new Uint8Array(Math.ceil(A.length/8));
+  A.forEach((a,i) => { if (isDone(a.id)) bytes[i>>3] |= 1 << (i&7); });
+  return 'v1.' + A.length.toString(36) + '.' + b64u(bytes);
+}
+const syncLink = () => location.href.split('#')[0] + '#s=' + exportCode();
+
+function applyCode(raw){
+  const m = String(raw).trim().match(/v1\.([0-9a-z]+)\.([A-Za-z0-9_-]+)/);
+  if (!m) return { ok:false, msg:'That does not look like a sync link or code.' };
+  const n = parseInt(m[1], 36);
+  if (n !== A.length) return { ok:false, msg:`That code covers ${n} assignments but this list has ${A.length}. Both devices need the same version of the file.` };
+  let bytes;
+  try { bytes = unb64u(m[2]); } catch(e){ return { ok:false, msg:'The code is corrupted.' }; }
+  if (bytes.length < Math.ceil(n/8)) return { ok:false, msg:'The code is incomplete - it may have been cut off.' };
+  done.clear();
+  A.forEach((a,i) => { if ((bytes[i>>3] >> (i&7)) & 1) done.add(a.id); });
+  saveDone();
+  render();
+  return { ok:true, msg:`Synced - ${done.size} of ${A.length} marked complete.` };
+}
+
+const syncMsg = (text, cls) => {
+  const el = document.getElementById('syncMsg');
+  el.textContent = text; el.className = cls || '';
+};
+
+/* clipboard with a fallback for non-secure contexts (plain http / file://) */
+async function copyText(text, label){
+  try {
+    if (navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (!ok) throw new Error('blocked');
+    }
+    syncMsg(label + ' copied to clipboard.', 'ok');
+  } catch(e){
+    syncMsg('Could not copy automatically - long-press the code above and copy it.', 'bad');
+  }
+}
+
+document.getElementById('copyLink').addEventListener('click', () => copyText(syncLink(), 'Sync link'));
+document.getElementById('copyCode').addEventListener('click', () => copyText(exportCode(), 'Code'));
+document.getElementById('applyBtn').addEventListener('click', () => {
+  const v = document.getElementById('applyInput').value;
+  if (!v.trim()) return syncMsg('Paste a sync link or code first.', 'bad');
+  const r = applyCode(v);
+  syncMsg(r.msg, r.ok ? 'ok' : 'bad');
+  if (r.ok) document.getElementById('applyInput').value = '';
+});
+document.getElementById('applyInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('applyBtn').click();
+});
+
 /* legend + header count */
 document.getElementById('legend').innerHTML = Object.keys(COURSES)
   .map(c => `<span><i style="background:${COURSES[c].raw}"></i>${c}</span>`).join('');
@@ -872,6 +994,18 @@ document.getElementById('courseCount').textContent =
 render();
 /* start the calendar on the first month that has work if the term hasn't begun */
 if (A.length && TODAY < A[0].date){ state.cursor = A[0].date; render(); }
+
+/* a #s=... link overwrites this device's checkmarks, then the hash is stripped
+   so a later refresh can't clobber changes made after the sync */
+(function(){
+  const m = location.hash.match(/[#&]s=([^&]+)/);
+  if (!m) return;
+  const r = applyCode(decodeURIComponent(m[1]));
+  history.replaceState(null, '', location.pathname + location.search);
+  syncMsg(r.msg, r.ok ? 'ok' : 'bad');
+  document.querySelector('details.sync').open = true;
+  if (r.ok && isMobile) document.getElementById('mProgress').click();
+})();
 </script>
 </body>
 </html>
